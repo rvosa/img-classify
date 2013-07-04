@@ -1,3 +1,3 @@
-cc -o helloworld `pkg-config --cflags --libs MagickCore` helloworld.c
+cc -o helloworld `pkg-config --cflags --libs MagickWand` helloworld.c
 
 

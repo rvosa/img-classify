@@ -1,38 +1,44 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <magick/MagickCore.h>
+#include <wand/MagickWand.h>
 
 int main(int argc,char **argv) {
-	ExceptionInfo *exception;
-	Image *image;
-	ImageInfo *image_info;
+	PixelIterator *iterator;
+	MagickWand *wand;
+	PixelWand **row;
+	unsigned long width, height;
+	Quantum red, green, blue; // i.e. unsigned short
   	
-	// initialize image info structure
-	MagickCoreGenesis(*argv,MagickTrue);
-	exception=AcquireExceptionInfo();
-	image_info=CloneImageInfo((ImageInfo *) NULL);
-	
-	// read an image
-	(void) strcpy(image_info->filename,argv[1]);
-	image=ReadImage(image_info,exception);
-	
-	// handle exceptions
-	if (exception->severity != UndefinedException) {
-		CatchException(exception);
-	}
-	if (image == (Image *) NULL) {
-		exit(1);
-	}
+	// set things up
+	MagickWandGenesis();
+	wand = NewMagickWand();
+		
+	// read an image, get dimensions
+	MagickReadImage(wand, argv[1]);
+	width = MagickGetImageWidth(wand);
+	height = MagickGetImageHeight(wand);
 
-	// write some output
-	(void) fprintf(stdout,"Hello world! Read an image: %s\n",argv[1]);
-
+	// iterate over rows
+	iterator = NewPixelIterator(wand);
+	for( int y = 0; y < height; y++ ) {
+		row = PixelGetNextIteratorRow(iterator,&width);
+		
+		// iterate over columns
+		for ( int x = 0; x < width; x++ ) {
+			
+			// get RGB values
+			red   = PixelGetRedQuantum(row[x]);
+			green = PixelGetGreenQuantum(row[x]);
+			blue  = PixelGetBlueQuantum(row[x]);
+			
+			// print the output
+			printf("pixel %d,%d is rgb=(%d,%d,%d)\n", x, y, red, green, blue);
+		}
+	}
+	
 	// clean up
-	image=DestroyImageList(image);
-	image_info=DestroyImageInfo(image_info);
-	exception=DestroyExceptionInfo(exception);
+	iterator = DestroyPixelIterator(iterator);
+	wand = DestroyMagickWand(wand);
 	MagickCoreTerminus();
 	return(0);
 }
