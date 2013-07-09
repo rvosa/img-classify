@@ -1,90 +1,76 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <wand/MagickWand.h>
-
-// holds a set of values resulting from one of the phenotyping algorithms
-typedef struct PhenoType {
-	int size;
-	double *data;
-} PhenoType;
+#include "types.h"
 
 // constructor for phenotype structs
 PhenoType *NewPhenoType(int bin_size) 
 {
 	PhenoType *result = (PhenoType*) malloc(sizeof(PhenoType));
-	double data[bin_size];
 	result->size = bin_size;
-	result->data = data;
 	return result;
 }
 
 // example algorithm
 PhenoType *average_pixel_value(MagickWand *wand, int bin_size) 
 {
+	// instantiate helper objects
  	PixelIterator *iterator = NewPixelIterator(wand);
-	Quantum red, green, blue; // i.e. unsigned short
-	PixelWand **row;
-	printf("initialized helper objects\n");
-	
-	// create a new phenotype struct
 	PhenoType *result = NewPhenoType(bin_size * 2);
-	printf("initialized PhenoType result data structure\n");
 	
 	// get image dimensions
  	unsigned long width = MagickGetImageWidth(wand);
  	unsigned long height = MagickGetImageHeight(wand);
- 	printf("image width is %lu\n",width);
- 	printf("image height is %lu\n",height);
  	
- 	// this is how many pixels it takes until we've filled a bin over which to compute
+ 	// this is how many pixels it takes until we've filled a 
+ 	// bin over which to compute some value
  	int horiz_bin = width / bin_size;
  	int vert_bin  = height / bin_size;
- 	printf("horizontal bin size is %d pixels\n", horiz_bin);
- 	printf("vertical bin size is %d pixels\n", vert_bin);
  	
  	// will have a running tally over these
  	double x_average = 0.0;
- 	double y_average = 0.0;
- 	
+ 	double y_average = 0.0; 	
 
- 	// iterate over pixels
+ 	// iterate over rows
  	for ( int y = 0; y < height; y++ ) 
  	{
+ 	
+ 		// iterate over columns
+ 		PixelWand **row;
 		row = PixelGetNextIteratorRow(iterator,&width); 	
  		for ( int x  = 0; x < width; x++ ) 
  		{
 
 			// get RGB values
-			red   = PixelGetRedQuantum(row[x]);
-			green = PixelGetGreenQuantum(row[x]);
-			blue  = PixelGetBlueQuantum(row[x]);
+			unsigned char red   = PixelGetRedQuantum(row[x]);
+			unsigned char green = PixelGetGreenQuantum(row[x]);
+			unsigned char blue  = PixelGetBlueQuantum(row[x]);
+			double average = ( red + green + blue ) / 3;			
+			x_average = x_average + average;
+			y_average = y_average + average;
 			
-			x_average = x_average + red + green + blue;
-			y_average = y_average + red + green + blue;
-			
+			// the column number is a multiple of bin
 			if ( x % horiz_bin == 0 ) 
 			{
 				int x_idx = x / horiz_bin;
 				result->data[x_idx] = result->data[x_idx] + x_average;
 				x_average = 0.0;
-			}
+			}			
  		}
+ 		
+ 		// the row number is a multiple of bin
 		if ( y % vert_bin == 0 ) 
 		{
 			int y_idx = ( y / vert_bin ) + bin_size;
-			printf("%d\n",y_idx);
-			result->data[y_idx] = result->data[y_idx] + y_average;
-			y_average = 0.0;
-		} 		
- 	}
- 	
- 	// now divide
- 	for ( int i = 0; i < bin_size; i++ ) 
- 	{
- 		result->data[i] = result->data[i] / 3 / horiz_bin;
- 		result->data[i+bin_size] = result->data[i+bin_size] / 3 / vert_bin;
- 		printf("bin %d, x value %f, y value %f\n", i, result->data[i], result->data[i+bin_size]); 		
- 	}
+			if ( y_idx < result->size ) {
+				result->data[y_idx] = result->data[y_idx] + y_average;
+				y_average = 0.0;
+			}
+			else {
+				//printf("ignoring edges at %d\n", y_idx);
+			}
+		} 			
+ 	}	
  	
 	// clean up
 	iterator = DestroyPixelIterator(iterator); 	
