@@ -53,7 +53,7 @@ PhenoType *average_pixel_value(MagickWand *wand, int bin_size)
 			if ( x % horiz_bin == 0 ) 
 			{
 				int x_idx = x / horiz_bin;
-				result->data[x_idx] = result->data[x_idx] + x_average;
+				result->data[x_idx] += x_average;
 				x_average = 0.0;
 			}			
  		}
@@ -63,7 +63,7 @@ PhenoType *average_pixel_value(MagickWand *wand, int bin_size)
 		{
 			int y_idx = ( y / vert_bin ) + bin_size;
 			if ( y_idx < result->size ) {
-				result->data[y_idx] = result->data[y_idx] + y_average;
+				result->data[y_idx] += y_average;
 				y_average = 0.0;
 			}
 			else {
